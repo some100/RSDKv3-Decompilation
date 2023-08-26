@@ -92,7 +92,6 @@ RSDKv3/[Uu][Dd]ata.bin
 ![Dd]ependencies/android/dependencies.txt
 ![Dd]ependencies/android/libogg/include/ogg/config_types.h
 [Dd]ependencies/web/*
-[Dd]ependencies/web/gl4es
 ![Dd]ependencies/web/dependencies.txt
 
 RSDKv3UWP/Generated Files

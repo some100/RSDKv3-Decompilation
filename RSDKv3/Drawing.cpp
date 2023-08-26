@@ -262,9 +262,7 @@ int InitRenderDevice()
 #if RETRO_USING_OPENGL
     // Init GL
     Engine.glContext = SDL_GL_CreateContext(Engine.window);
-    #if RETRO_PLATFORM == RETRO_WEB
-    initialize_gl4es(); // Init gl4es for web builds
-    #else
+    #if RETRO_PLATFORM != RETRO_WEB
     SDL_GL_SetSwapInterval(Engine.vsync ? 1 : 0);
     #endif
 
@@ -585,7 +583,7 @@ void FlipScreen()
             // reset everything just in case
             SDL_RenderSetLogicalSize(Engine.renderer, SCREEN_XSIZE, SCREEN_YSIZE);
             SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "nearest");
-            // putting some FLEX TAPE� on that memory leak
+            // putting some FLEX TAPE  on that memory leak
             SDL_DestroyTexture(texTarget);
         }
         else {

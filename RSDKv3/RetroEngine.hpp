@@ -172,9 +172,6 @@ typedef unsigned int uint;
 #else
 #include <GL/glew.h>
 #endif
-#if RETRO_PLATFORM == RETRO_WEB
-#include <gl4esinit.h>
-#endif
 #endif
 
 #define RETRO_USE_HAPTICS (1)
