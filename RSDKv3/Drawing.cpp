@@ -269,7 +269,11 @@ int InitRenderDevice()
 #if RETRO_PLATFORM != RETRO_ANDROID && RETRO_PLATFORM != RETRO_OSX
     // glew Setup
     GLenum err = glewInit();
+#if RETRO_PLATFORM == RETRO_WEB
+    if (err != GLEW_OK) {
+#else
     if (err != GLEW_OK && err != GLEW_ERROR_NO_GLX_DISPLAY) {
+#endif
         PrintLog("glew init error:");
         PrintLog((const char *)glewGetErrorString(err));
         return false;
