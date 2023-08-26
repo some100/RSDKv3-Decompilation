@@ -47,7 +47,7 @@ bool ProcessEvents()
                     }
                     case SDL_WINDOWEVENT_CLOSE: Engine.gameMode = ENGINE_EXITGAME; return false;
                     case SDL_WINDOWEVENT_FOCUS_LOST:
-                        if (!(disableFocusPause & 1))
+                        if (!((disableFocusPause + 1) & 1))
                             Engine.message = MESSAGE_LOSTFOCUS;
                         Engine.hasFocus = false;
                         break;
@@ -57,7 +57,7 @@ bool ProcessEvents()
             case SDL_CONTROLLERDEVICEADDED: ControllerInit(Engine.sdlEvents.cdevice.which); break;
             case SDL_CONTROLLERDEVICEREMOVED: ControllerClose(Engine.sdlEvents.cdevice.which); break;
             case SDL_APP_WILLENTERBACKGROUND:
-                if (!(disableFocusPause & 1))
+                if (!((disableFocusPause + 1) & 1))
                     Engine.message = MESSAGE_LOSTFOCUS;
                 Engine.hasFocus = false;
                 break;
@@ -375,7 +375,7 @@ void RetroEngine::Run()
         running = ProcessEvents();
 
         // Focus Checks
-        if (!(disableFocusPause & 2)) {
+        if (!((disableFocusPause + 1) & 2)) {
             if (!Engine.hasFocus) {
                 if (!(Engine.focusState & 1))
                     Engine.focusState = PauseSound() ? 3 : 1;
@@ -519,6 +519,41 @@ int GetXMLAttributeValueInt(const tinyxml2::XMLAttribute *attributePtr) { return
 bool GetXMLAttributeValueBool(const tinyxml2::XMLAttribute *attributePtr) { return attributePtr->BoolValue(); }
 const char *GetXMLAttributeValueString(const tinyxml2::XMLAttribute *attributePtr) { return attributePtr->Value(); }
 
+void RetroEngine::LoadXMLWindowText()
+{
+    FileInfo info;
+    for (int m = 0; m < (int)modList.size(); ++m) {
+        if (!modList[m].active)
+            continue;
+
+        SetActiveMod(m);
+        if (LoadFile("Data/Game/Game.xml", &info)) {
+            tinyxml2::XMLDocument *doc = new tinyxml2::XMLDocument;
+
+            char *xmlData = new char[info.fileSize + 1];
+            FileRead(xmlData, info.fileSize);
+            xmlData[info.fileSize] = 0;
+
+            bool success = doc->Parse(xmlData) == tinyxml2::XML_SUCCESS;
+
+            if (success) {
+                const tinyxml2::XMLElement *gameElement  = FirstXMLChildElement(doc, nullptr, "game");
+                const tinyxml2::XMLElement *titleElement = FirstXMLChildElement(doc, gameElement, "title");
+                if (titleElement) {
+                    const tinyxml2::XMLAttribute *nameAttr = FindXMLAttribute(titleElement, "name");
+                    if (nameAttr)
+                        StrCopy(gameWindowText, GetXMLAttributeValueString(nameAttr));
+                }
+            }
+
+            delete[] xmlData;
+            delete doc;
+
+            CloseFile();
+        }
+    }
+    SetActiveMod(-1);
+}
 void RetroEngine::LoadXMLVariables()
 {
     FileInfo info;
@@ -591,37 +626,74 @@ void RetroEngine::LoadXMLPalettes()
                 const tinyxml2::XMLElement *gameElement    = FirstXMLChildElement(doc, nullptr, "game");
                 const tinyxml2::XMLElement *paletteElement = FirstXMLChildElement(doc, gameElement, "palette");
                 if (paletteElement) {
-                    const tinyxml2::XMLElement *clrElement = FirstXMLChildElement(doc, paletteElement, "color");
-                    if (clrElement) {
-                        do {
-                            const tinyxml2::XMLAttribute *bankAttr = FindXMLAttribute(clrElement, "bank");
-                            int clrBank                            = 0;
-                            if (bankAttr)
-                                clrBank = GetXMLAttributeValueInt(bankAttr);
+                    for (const tinyxml2::XMLElement *clrElement = paletteElement->FirstChildElement("color"); clrElement;
+                         clrElement                             = clrElement->NextSiblingElement("color")) {
+                        const tinyxml2::XMLAttribute *bankAttr = clrElement->FindAttribute("bank");
+                        int clrBank                            = 0;
+                        if (bankAttr)
+                            clrBank = bankAttr->IntValue();
 
-                            const tinyxml2::XMLAttribute *indAttr = FindXMLAttribute(clrElement, "index");
-                            int clrInd                            = 0;
-                            if (indAttr)
-                                clrInd = GetXMLAttributeValueInt(indAttr);
+                        const tinyxml2::XMLAttribute *indAttr = clrElement->FindAttribute("index");
+                        int clrInd                            = 0;
+                        if (indAttr)
+                            clrInd = indAttr->IntValue();
 
-                            const tinyxml2::XMLAttribute *rAttr = FindXMLAttribute(clrElement, "r");
-                            int clrR                            = 0;
-                            if (rAttr)
-                                clrR = GetXMLAttributeValueInt(rAttr);
+                        const tinyxml2::XMLAttribute *rAttr = clrElement->FindAttribute("r");
+                        int clrR                            = 0;
+                        if (rAttr)
+                            clrR = rAttr->IntValue();
 
-                            const tinyxml2::XMLAttribute *gAttr = FindXMLAttribute(clrElement, "g");
-                            int clrG                            = 0;
-                            if (gAttr)
-                                clrG = GetXMLAttributeValueInt(gAttr);
+                        const tinyxml2::XMLAttribute *gAttr = clrElement->FindAttribute("g");
+                        int clrG                            = 0;
+                        if (gAttr)
+                            clrG = gAttr->IntValue();
 
-                            const tinyxml2::XMLAttribute *bAttr = FindXMLAttribute(clrElement, "b");
-                            int clrB                            = 0;
-                            if (bAttr)
-                                clrB = GetXMLAttributeValueInt(bAttr);
+                        const tinyxml2::XMLAttribute *bAttr = clrElement->FindAttribute("b");
+                        int clrB                            = 0;
+                        if (bAttr)
+                            clrB = bAttr->IntValue();
 
-                            SetPaletteEntry(clrBank, clrInd, clrR, clrG, clrB);
+                        SetPaletteEntry(clrBank, clrInd, clrR, clrG, clrB);
+                    }
 
-                        } while ((clrElement = NextXMLSiblingElement(doc, clrElement, "color")));
+                    for (const tinyxml2::XMLElement *clrsElement = paletteElement->FirstChildElement("colors"); clrsElement;
+                         clrsElement                             = clrsElement->NextSiblingElement("colors")) {
+                        const tinyxml2::XMLAttribute *bankAttr = clrsElement->FindAttribute("bank");
+                        int bank                               = 0;
+                        if (bankAttr)
+                            bank = bankAttr->IntValue();
+
+                        const tinyxml2::XMLAttribute *indAttr = clrsElement->FindAttribute("start");
+                        int index                             = 0;
+                        if (indAttr)
+                            index = indAttr->IntValue();
+
+                        std::string text = clrsElement->GetText();
+                        // working: AABBFF #FFaaFF (12, 32, 34) (145 53 234)
+                        std::regex search(R"((?:#?([0-9A-F]{2})([0-9A-F]{2})([0-9A-F]{2}))|(?:\((\d+),?\s*(\d+),?\s*(\d+)\)))",
+                                          std::regex_constants::icase | std::regex_constants::ECMAScript);
+                        std::smatch match;
+                        while (std::regex_search(text, match, search)) {
+                            int r, g, b;
+                            int base, start;
+                            if (match[1].matched) {
+                                // we have hex
+                                base  = 16;
+                                start = 1;
+                            }
+                            else {
+                                // triplet
+                                base  = 10;
+                                start = 4;
+                            }
+
+                            r = std::stoi(match[start + 0].str(), nullptr, base);
+                            g = std::stoi(match[start + 1].str(), nullptr, base);
+                            b = std::stoi(match[start + 2].str(), nullptr, base);
+
+                            SetPaletteEntry(bank, index++, r, g, b);
+                            text = match.suffix();
+                        }
                     }
                 }
             }
@@ -841,7 +913,7 @@ void RetroEngine::LoadXMLStages(TextMenu *menu, int listNo)
 
                                 const tinyxml2::XMLAttribute *folderAttr = FindXMLAttribute(stgElement, "folder");
                                 const char *stgFolder                    = "unknownStageFolder";
-                                if (nameAttr)
+                                if (folderAttr)
                                     stgFolder = GetXMLAttributeValueString(folderAttr);
 
                                 const tinyxml2::XMLAttribute *idAttr = FindXMLAttribute(stgElement, "id");
@@ -955,12 +1027,8 @@ bool RetroEngine::LoadGameConfig(const char *filePath)
             FileRead(&fileBuffer2, 1);
             globalVariables[v] += fileBuffer2;
         }
-
-        SetGlobalVariableByName("Options.DevMenuFlag", false);
-        if (devMenu) {
-            SetGlobalVariableByName("Options.DevMenuFlag", true);
-        }
-
+        
+        SetGlobalVariableByName("Options.DevMenuFlag", devMenu ? 1 : 0);
         SetGlobalVariableByName("Engine.PlatformId", RETRO_GAMEPLATFORMID);
         SetGlobalVariableByName("Engine.DeviceType", RETRO_GAMEPLATFORM);
 
@@ -1021,7 +1089,10 @@ bool RetroEngine::LoadGameConfig(const char *filePath)
         if (!disableSaveIniOverride) {
 #endif
             if (controlMode >= 0) {
-                saveRAM[35] = controlMode;
+                if (ReadSaveRAMData()) {
+                    saveRAM[35] = controlMode;
+                    WriteSaveRAMData();
+                }
                 SetGlobalVariableByName("Options.OriginalControls", controlMode);
             }
 #if RETRO_USE_MOD_LOADER
@@ -1030,12 +1101,17 @@ bool RetroEngine::LoadGameConfig(const char *filePath)
 #endif
 
         CloseFile();
+
 #if RETRO_USE_MOD_LOADER
+        LoadXMLWindowText();
         LoadXMLVariables();
         LoadXMLPalettes();
         LoadXMLObjects();
         LoadXMLPlayers(NULL);
         LoadXMLStages(NULL, 0);
+
+        SetGlobalVariableByName("Engine.Standalone", 1);
+        SetGlobalVariableByName("game.hasPlusDLC", 0); // Just force to false for now. TODO: Add a proper check
 #endif
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -1059,9 +1135,8 @@ void RetroEngine::Callback(int callbackID)
 {
     // Sonic Origins Params
     int notifyParam1 = GetGlobalVariableByName("game.callbackParam0");
-    // int notifyParam2 = GetGlobalVariableByName("game.callbackParam1");
-    // int notifyParam3 = GetGlobalVariableByName("game.callbackParam2");
-    // int notifyParam4 = GetGlobalVariableByName("game.callbackParam3");
+    int notifyParam2 = GetGlobalVariableByName("game.callbackParam1");
+    int notifyParam3 = GetGlobalVariableByName("game.callbackParam2");
 
     switch (callbackID) {
         default: PrintLog("Callback: Unknown (%d)", callbackID); break;
@@ -1184,7 +1259,7 @@ void RetroEngine::Callback(int callbackID)
             PrintLog("Callback: Pause Menu Requested");
             break;
         case CALLBACK_FULL_VERSION_ONLY: PrintLog("Callback: Full Version Only Notify"); break; // PC = ???, Mobile = Full Game Only Screen
-        case CALLBACK_STAFF_CREDITS:                                                            // PC = Staff Credits, Mobile = Privacy
+        case CALLBACK_STAFF_CREDITS: // PC = Staff Credits, Mobile = Privacy
             if (bytecodeMode == BYTECODE_PC) {
                 for (int s = 0; s < stageListCount[STAGELIST_PRESENTATION]; ++s) {
                     if (StrComp("CREDITS", stageList[STAGELIST_PRESENTATION][s].name)) {
@@ -1219,7 +1294,10 @@ void RetroEngine::Callback(int callbackID)
         case NOTIFY_DEATH_EVENT: PrintLog("NOTIFY: DeathEvent() -> %d", notifyParam1); break;
         case NOTIFY_TOUCH_SIGNPOST: PrintLog("NOTIFY: TouchSignPost() -> %d", notifyParam1); break;
         case NOTIFY_HUD_ENABLE: PrintLog("NOTIFY: HUDEnable() -> %d", notifyParam1); break;
-        case NOTIFY_ADD_COIN: PrintLog("NOTIFY: AddCoin() -> %d", notifyParam1); break;
+        case NOTIFY_ADD_COIN:
+            PrintLog("NOTIFY: AddCoin() -> %d", notifyParam1);
+            SetGlobalVariableByName("game.coinCount", GetGlobalVariableByName("game.coinCount") + notifyParam1);
+            break;
         case NOTIFY_KILL_ENEMY: PrintLog("NOTIFY: KillEnemy() -> %d", notifyParam1); break;
         case NOTIFY_SAVESLOT_SELECT: PrintLog("NOTIFY: SaveSlotSelect() -> %d", notifyParam1); break;
         case NOTIFY_FUTURE_PAST:
@@ -1229,26 +1307,44 @@ void RetroEngine::Callback(int callbackID)
         case NOTIFY_GOTO_FUTURE_PAST: PrintLog("NOTIFY: GotoFuturePast() -> %d", notifyParam1); break;
         case NOTIFY_BOSS_END: PrintLog("NOTIFY: BossEnd() -> %d", notifyParam1); break;
         case NOTIFY_SPECIAL_END: PrintLog("NOTIFY: SpecialEnd() -> %d", notifyParam1); break;
-        case NOTIFY_DEBUGPRINT: PrintLog("NOTIFY: DebugPrint() -> %d", notifyParam1); break;
+        case NOTIFY_DEBUGPRINT: PrintLog("NOTIFY: DebugPrint() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
         case NOTIFY_KILL_BOSS: PrintLog("NOTIFY: KillBoss() -> %d", notifyParam1); break;
         case NOTIFY_TOUCH_EMERALD: PrintLog("NOTIFY: TouchEmerald() -> %d", notifyParam1); break;
-        case NOTIFY_STATS_ENEMY: PrintLog("NOTIFY: StatsEnemy() -> %d", notifyParam1); break;
-        case NOTIFY_STATS_CHARA_ACTION: PrintLog("NOTIFY: StatsCharaAction() -> %d", notifyParam1); break;
+        case NOTIFY_STATS_ENEMY: PrintLog("NOTIFY: StatsEnemy() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
+        case NOTIFY_STATS_CHARA_ACTION: PrintLog("NOTIFY: StatsCharaAction() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
         case NOTIFY_STATS_RING: PrintLog("NOTIFY: StatsRing() -> %d", notifyParam1); break;
-        case NOTIFY_STATS_MOVIE: PrintLog("NOTIFY: StatsMovie() -> %d", notifyParam1); break;
-        case NOTIFY_STATS_PARAM_1: PrintLog("NOTIFY: StatsParam1() -> %d", notifyParam1); break;
+        case NOTIFY_STATS_MOVIE:
+            PrintLog("NOTIFY: StatsMovie() -> %d", notifyParam1);
+            ClearGraphicsData();
+            ClearAnimationData();
+            LoadPalette("MasterPalette.act", 0, 0, 0, 256);
+#if RETRO_USE_MOD_LOADER
+            Engine.LoadXMLPalettes();
+#endif
+            activeStageList   = 0;
+            stageMode         = STAGEMODE_LOAD;
+            Engine.gameMode   = ENGINE_MAINGAME;
+            stageListPosition = 0;
+            break;
+        case NOTIFY_STATS_PARAM_1: PrintLog("NOTIFY: StatsParam1() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
         case NOTIFY_STATS_PARAM_2: PrintLog("NOTIFY: StatsParam2() -> %d", notifyParam1); break;
         case NOTIFY_CHARACTER_SELECT:
             PrintLog("NOTIFY: CharacterSelect() -> %d", notifyParam1);
             SetGlobalVariableByName("game.callbackResult", 1);
             SetGlobalVariableByName("game.continueFlag", 0);
             break;
-        case NOTIFY_SPECIAL_RETRY: SetGlobalVariableByName("game.callbackResult", 1); break;
+        case NOTIFY_SPECIAL_RETRY:
+            PrintLog("NOTIFY: SpecialRetry() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3);
+            SetGlobalVariableByName("game.callbackResult", 1);
+            break;
         case NOTIFY_TOUCH_CHECKPOINT: PrintLog("NOTIFY: TouchCheckpoint() -> %d", notifyParam1); break;
         case NOTIFY_ACT_FINISH: PrintLog("NOTIFY: ActFinish() -> %d", notifyParam1); break;
         case NOTIFY_1P_VS_SELECT: PrintLog("NOTIFY: 1PVSSelect() -> %d", notifyParam1); break;
-        case NOTIFY_CONTROLLER_SUPPORT: PrintLog("NOTIFY: ControllerSupport() -> %d", notifyParam1); break;
-        case NOTIFY_STAGE_RETRY: PrintLog("NOTIFY: StageRetry() -> %d", notifyParam1); break;
+        case NOTIFY_CONTROLLER_SUPPORT:
+            PrintLog("NOTIFY: ControllerSupport() -> %d", notifyParam1);
+            SetGlobalVariableByName("game.callbackResult", 1);
+            break;
+        case NOTIFY_STAGE_RETRY: PrintLog("NOTIFY: StageRetry() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
         case NOTIFY_SOUND_TRACK: PrintLog("NOTIFY: SoundTrack() -> %d", notifyParam1); break;
         case NOTIFY_GOOD_ENDING: PrintLog("NOTIFY: GoodEnding() -> %d", notifyParam1); break;
         case NOTIFY_BACK_TO_MAINMENU: PrintLog("NOTIFY: BackToMainMenu() -> %d", notifyParam1); break;
@@ -1257,14 +1353,15 @@ void RetroEngine::Callback(int callbackID)
         case NOTIFY_EXTRAS_MODE: PrintLog("NOTIFY: ExtrasMode() -> %d", notifyParam1); break;
         case NOTIFY_SPIN_DASH_TYPE: PrintLog("NOTIFY: SpindashType() -> %d", notifyParam1); break;
         case NOTIFY_TIME_OVER: PrintLog("NOTIFY: TimeOver() -> %d", notifyParam1); break;
+        case NOTIFY_TIMEATTACK_MODE: PrintLog("NOTIFY: TimeAttackMode() -> %d", notifyParam1); break;
+        case NOTIFY_STATS_BREAK_OBJECT: PrintLog("NOTIFY: StatsBreakObject() -> %d, %d", notifyParam1, notifyParam2); break;
+        case NOTIFY_STATS_SAVE_FUTURE: PrintLog("NOTIFY: StatsSaveFuture() -> %d", notifyParam1); break;
+        case NOTIFY_STATS_CHARA_ACTION2: PrintLog("NOTIFY: StatsCharaAction2() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
 
         // Sega Forever stuff
         case CALLBACK_SHOWMENU_2: PrintLog("Callback: showMenu(2)"); break;
         case CALLBACK_SHOWHELPCENTER: PrintLog("Callback: Show Help Center"); break;
         case CALLBACK_CHANGEADSTYPE: PrintLog("Callback: Change Ads Type"); break;
-        case CALLBACK_NONE_1000:
-        case CALLBACK_NONE_1001:
-        case CALLBACK_NONE_1006: PrintLog("Callback: Unknown - %d", callbackID); break;
         case CALLBACK_ONSHOWINTERSTITIAL: PrintLog("Callback: onShowInterstitial(2, 0) - Pause_Duration"); break;
         case CALLBACK_ONSHOWBANNER: PrintLog("Callback: onShowBanner()"); break;
         case CALLBACK_ONSHOWBANNER_PAUSESTART: PrintLog("Callback: onShowBanner() - Pause_Start"); break;
@@ -1272,7 +1369,8 @@ void RetroEngine::Callback(int callbackID)
         case CALLBACK_REMOVEADSBUTTON_FADEOUT: PrintLog("Callback: RemoveAdsButton_FadeOut()"); break;
         case CALLBACK_REMOVEADSBUTTON_FADEIN: PrintLog("Callback: RemoveAdsButton_FadeIn()"); break;
         case CALLBACK_ONSHOWINTERSTITIAL_2:
-        case CALLBACK_ONSHOWINTERSTITIAL_3: PrintLog("Callback: onShowInterstitial(0, 0)"); break;
+        case CALLBACK_ONSHOWINTERSTITIAL_3:
+        case CALLBACK_ONSHOWINTERSTITIAL_5: PrintLog("Callback: onShowInterstitial(0, 0)"); break;
         case CALLBACK_ONSHOWINTERSTITIAL_4: PrintLog("Callback: onShowInterstitial(1, 0)"); break;
         case CALLBACK_ONVISIBLEGRIDBTN_1: PrintLog("Callback: onVisibleGridBtn(1)"); break;
         case CALLBACK_ONVISIBLEGRIDBTN_0:
@@ -1285,9 +1383,14 @@ void RetroEngine::Callback(int callbackID)
         case CALLBACK_ONSHOWINTERSTITIAL_PAUSEDURATION: PrintLog("Callback: onShowInterstitial(0, 0) - Pause_Duration"); break;
         case CALLBACK_SHOWCOUNTDOWNMENU: PrintLog("Callback: showCountDownMenu(0)"); break;
         case CALLBACK_ONVISIBLEMAINMENU_1: PrintLog("Callback: onVisibleMainMenu(1)"); break;
-        case CALLBACK_ONVISIBLEMAINMENU_0:
-            PrintLog("Callback: OnVisibleMainMenu(0)");
+        case CALLBACK_ONVISIBLEMAINMENU_0: PrintLog("Callback: OnVisibleMainMenu(0)"); break;
+        case CALLBACK_ONSHOWREWARDADS:
+            PrintLog("Callback: onShowRewardAds(0)");
+
+            // small hack to prevent a softlock
+            SetGlobalVariableByName("RewardAdCallback", 1);
             break;
+        case CALLBACK_ONSHOWBANNER_2: PrintLog("Callback: onShowBanner(4, 0)"); break;
 
             // Mod loader Only
 #if RETRO_USE_MOD_LOADER

@@ -361,6 +361,10 @@ int InitRenderDevice()
         vh = mode.w;
     }
     SetScreenDimensions(SCREEN_XSIZE, SCREEN_YSIZE, vw, vh);
+#elif RETRO_USING_SDL2 && RETRO_USING_OPENGL
+    int drawableWidth, drawableHeight;
+    SDL_GL_GetDrawableSize(Engine.window, &drawableWidth, &drawableHeight);
+    SetScreenDimensions(SCREEN_XSIZE, SCREEN_YSIZE, drawableWidth, drawableHeight);
 #elif RETRO_USING_SDL2
     SetScreenDimensions(SCREEN_XSIZE, SCREEN_YSIZE, SCREEN_XSIZE * Engine.windowScale, SCREEN_YSIZE * Engine.windowScale);
 #endif
@@ -1033,12 +1037,12 @@ void ReleaseRenderDevice()
     }
 
 #if RETRO_USING_OPENGL
-    for (int i = 0; i < HW_TEXTURE_COUNT; i++) glDeleteTextures(1, &gfxTextureID[i]);
-
+	if (Engine.glContext) {
+		for (int i = 0; i < HW_TEXTURE_COUNT; i++) glDeleteTextures(1, &gfxTextureID[i]);
 #if RETRO_USING_SDL2
-    if (Engine.glContext)
-        SDL_GL_DeleteContext(Engine.glContext);
+		SDL_GL_DeleteContext(Engine.glContext);
 #endif
+	}
 #endif
 
 #if RETRO_USING_SDL2
@@ -1943,8 +1947,11 @@ void DrawStageGFX()
     }
 
     DrawObjectList(5);
-    // Extra Origins draw list
-    DrawObjectList(7);
+#if !RETRO_USE_ORIGINAL_CODE
+    // Hacky fix for Tails Object not working properly on non-Origins bytecode
+    if (forceUseScripts || GetGlobalVariableByName("NOTIFY_1P_VS_SELECT") != 0)
+#endif
+        DrawObjectList(7); // Extra Origins draw list (who knows why it comes before 6)
     DrawObjectList(6);
 
 #if !RETRO_USE_ORIGINAL_CODE
@@ -2033,6 +2040,11 @@ void DrawDebugOverlays()
                 case H_TYPE_FINGER:
                     if (showHitboxes & 2)
                         DrawRectangle(x + xScrollOffset, y + yScrollOffset, w, h, 0xF0, 0x00, 0xF0, 0x60);
+                    break;
+
+                case H_TYPE_HAMMER:
+                    if (showHitboxes & 1)
+                        DrawRectangle(x, y, w, h, info->collision ? 0xA0 : 0xFF, info->collision ? 0xA0 : 0xFF, 0x00, 0x60);
                     break;
             }
         }

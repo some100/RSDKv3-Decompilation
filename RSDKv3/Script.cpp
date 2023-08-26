@@ -438,38 +438,38 @@ const FunctionInfo functions[] = {
 };
 
 #if RETRO_USE_COMPILER
-AliasInfo aliases[0x80] = { AliasInfo("true", "1"),
-                            AliasInfo("false", "0"),
-                            AliasInfo("FX_SCALE", "0"),
-                            AliasInfo("FX_ROTATE", "1"),
-                            AliasInfo("FX_ROTOZOOM", "2"),
-                            AliasInfo("FX_INK", "3"),
-                            AliasInfo("PRESENTATION_STAGE", "0"),
-                            AliasInfo("REGULAR_STAGE", "1"),
-                            AliasInfo("BONUS_STAGE", "2"),
-                            AliasInfo("SPECIAL_STAGE", "3"),
-                            AliasInfo("MENU_1", "0"),
-                            AliasInfo("MENU_2", "1"),
-                            AliasInfo("C_TOUCH", "0"),
-                            AliasInfo("C_BOX", "1"),
-                            AliasInfo("C_BOX2", "2"),
-                            AliasInfo("C_PLATFORM", "3"),
-                            AliasInfo("MAT_WORLD", "0"),
-                            AliasInfo("MAT_VIEW", "1"),
-                            AliasInfo("MAT_TEMP", "2"),
-                            AliasInfo("FX_FLIP", "5"),
-                            AliasInfo("FACING_LEFT", "1"),
-                            AliasInfo("FACING_RIGHT", "0"),
-                            AliasInfo("STAGE_PAUSED", "2"),
-                            AliasInfo("STAGE_RUNNING", "1"),
-                            AliasInfo("RESET_GAME", "2"),
-                            AliasInfo("RETRO_WIN", "0"),
-                            AliasInfo("RETRO_OSX", "1"),
-                            AliasInfo("RETRO_XBOX_360", "2"),
-                            AliasInfo("RETRO_PS3", "3"),
-                            AliasInfo("RETRO_iOS", "4"),
-                            AliasInfo("RETRO_ANDROID", "5"),
-                            AliasInfo("RETRO_WP7", "6") };
+AliasInfo aliases[ALIAS_COUNT] = { AliasInfo("true", "1"),
+                                   AliasInfo("false", "0"),
+                                   AliasInfo("FX_SCALE", "0"),
+                                   AliasInfo("FX_ROTATE", "1"),
+                                   AliasInfo("FX_ROTOZOOM", "2"),
+                                   AliasInfo("FX_INK", "3"),
+                                   AliasInfo("PRESENTATION_STAGE", "0"),
+                                   AliasInfo("REGULAR_STAGE", "1"),
+                                   AliasInfo("BONUS_STAGE", "2"),
+                                   AliasInfo("SPECIAL_STAGE", "3"),
+                                   AliasInfo("MENU_1", "0"),
+                                   AliasInfo("MENU_2", "1"),
+                                   AliasInfo("C_TOUCH", "0"),
+                                   AliasInfo("C_BOX", "1"),
+                                   AliasInfo("C_BOX2", "2"),
+                                   AliasInfo("C_PLATFORM", "3"),
+                                   AliasInfo("MAT_WORLD", "0"),
+                                   AliasInfo("MAT_VIEW", "1"),
+                                   AliasInfo("MAT_TEMP", "2"),
+                                   AliasInfo("FX_FLIP", "5"),
+                                   AliasInfo("FACING_LEFT", "1"),
+                                   AliasInfo("FACING_RIGHT", "0"),
+                                   AliasInfo("STAGE_PAUSED", "2"),
+                                   AliasInfo("STAGE_RUNNING", "1"),
+                                   AliasInfo("RESET_GAME", "2"),
+                                   AliasInfo("RETRO_WIN", "0"),
+                                   AliasInfo("RETRO_OSX", "1"),
+                                   AliasInfo("RETRO_XBOX_360", "2"),
+                                   AliasInfo("RETRO_PS3", "3"),
+                                   AliasInfo("RETRO_iOS", "4"),
+                                   AliasInfo("RETRO_ANDROID", "5"),
+                                   AliasInfo("RETRO_WP7", "6") };
 
 const char scriptEvaluationTokens[][0x4] = { "=",  "+=", "-=", "++", "--", "*=", "/=", ">>=", "<<=", "&=",
                                              "|=", "^=", "%=", "==", ">",  ">=", "<",  "<=",  "!=" };
@@ -869,6 +869,17 @@ void CheckAliasText(char *text)
 {
     if (FindStringToken(text, "#alias", 1) != 0)
         return;
+
+#if !RETRO_USE_ORIGINAL_CODE
+    if (aliasCount >= ALIAS_COUNT) {
+        SetupTextMenu(&gameMenu[0], 0);
+        AddTextMenuEntry(&gameMenu[0], "SCRIPT PARSING FAILED");
+        AddTextMenuEntry(&gameMenu[0], " ");
+        AddTextMenuEntry(&gameMenu[0], "TOO MANY ALIASES");
+        Engine.gameMode = ENGINE_SCRIPTERROR;
+        return;
+    }
+#endif
 
     int textPos     = 6;
     int aliasStrPos = 0;
@@ -2114,10 +2125,10 @@ void ClearScriptData()
     jumpTableStackPos = 0;
     functionStackPos  = 0;
 
-    scriptCodePos       = 0;
-    scriptCodeOffset    = 0;
-    jumpTablePos    = 0;
-    jumpTableOffset = 0;
+    scriptCodePos    = 0;
+    scriptCodeOffset = 0;
+    jumpTablePos     = 0;
+    jumpTableOffset  = 0;
 
 #if RETRO_USE_COMPILER
     scriptFunctionCount = 0;
@@ -2157,6 +2168,16 @@ void ClearScriptData()
     }
 
     SetObjectTypeName((char *)"Blank Object", 0);
+
+    for (int s = 0; s < 2; s++) {
+        collisionStorage[s].entityNo = -1;
+        collisionStorage[s].type     = -1;
+        collisionStorage[s].left     = 0;
+        collisionStorage[s].top      = 0;
+        collisionStorage[s].right    = 0;
+        collisionStorage[s].bottom   = 0;
+    }
+
 }
 
 void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptSub)
@@ -3513,7 +3534,7 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptSub)
                 break;
             }
             case FUNC_PLAYEROBJECTCOLLISION:
-                opcodeSize = 0;
+                opcodeSize              = 0;
                 switch (scriptEng.operands[0]) {
                     default: break;
                     case C_TOUCH:
@@ -3527,7 +3548,7 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptSub)
                                      entity->XPos + (scriptEng.operands[3] << 16), entity->YPos + (scriptEng.operands[4] << 16));
                         break;
                     case C_BOX2:
-                        // case C_PLATFORM: // if pc ver, there's no box2
+                        // C_PLATFORM if pc ver, as there's no box2 there
                         if (!scriptInfo->mobile) {
                             PlatformCollision(entity->XPos + (scriptEng.operands[1] << 16), entity->YPos + (scriptEng.operands[2] << 16),
                                               entity->XPos + (scriptEng.operands[3] << 16), entity->YPos + (scriptEng.operands[4] << 16));
@@ -3542,6 +3563,16 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptSub)
                             PlatformCollision(entity->XPos + (scriptEng.operands[1] << 16), entity->YPos + (scriptEng.operands[2] << 16),
                                               entity->XPos + (scriptEng.operands[3] << 16), entity->YPos + (scriptEng.operands[4] << 16));
                         }
+                        break;
+                    case C_BOX3:
+                        BoxCollision3(entity->XPos + (scriptEng.operands[1] << 16), entity->YPos + (scriptEng.operands[2] << 16),
+                                      entity->XPos + (scriptEng.operands[3] << 16), entity->YPos + (scriptEng.operands[4] << 16));
+                        break;
+                    case C_ENEMY:
+                        scriptEng.operands[5] = entity->XPos >> 16;
+                        scriptEng.operands[6] = entity->YPos >> 16;
+                        EnemyCollision(scriptEng.operands[5] + scriptEng.operands[1], scriptEng.operands[6] + scriptEng.operands[2],
+                                      scriptEng.operands[5] + scriptEng.operands[3], scriptEng.operands[6] + scriptEng.operands[4]);
                         break;
                 }
                 break;
@@ -3662,6 +3693,7 @@ void ProcessScript(int scriptCodeStart, int jumpTableStart, byte scriptSub)
                     case CSIDE_LWALL: ObjectLWallGrip(scriptEng.operands[1], scriptEng.operands[2], scriptEng.operands[3]); break;
                     case CSIDE_RWALL: ObjectRWallGrip(scriptEng.operands[1], scriptEng.operands[2], scriptEng.operands[3]); break;
                     case CSIDE_ROOF: ObjectRoofGrip(scriptEng.operands[1], scriptEng.operands[2], scriptEng.operands[3]); break;
+                    case CSIDE_ENTITY: ObjectEntityGrip(scriptEng.operands[1], scriptEng.operands[2], scriptEng.operands[3]); break;
                 }
                 break;
             case FUNC_LOADVIDEO:
