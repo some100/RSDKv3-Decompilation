@@ -354,6 +354,7 @@ void RetroEngine::Init()
 
 void RetroEngine::Run()
 {
+#if RETRO_PLATFORM != RETRO_WEB
     unsigned long long targetFreq = SDL_GetPerformanceFrequency() / Engine.refreshRate;
     unsigned long long curTicks   = 0;
     unsigned long long prevTicks  = 0;
@@ -366,6 +367,7 @@ void RetroEngine::Run()
                 continue;
             prevTicks = curTicks;
         }
+#endif
 #endif
         running = ProcessEvents();
 
@@ -468,6 +470,7 @@ void RetroEngine::Run()
             // StopHaptics();
         }
 #endif
+#if RETRO_PLATFORM != RETRO_WEB
     }
 
     ReleaseAudioDevice();
@@ -480,6 +483,7 @@ void RetroEngine::Run()
 
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_Quit();
+#endif
 #endif
 }
 

@@ -47,6 +47,15 @@ SDL_AudioStream *ogv_stream;
 int InitAudioPlayback()
 {
     StopAllSfx(); //"init"
+
+#if RETRO_PLATFORM == RETRO_WEB
+    if (SDL_Init(SDL_INIT_AUDIO) < 0) {
+        PrintLog("Failed to initialize audio subsystem: %s", SDL_GetError());
+        audioEnabled = false;
+        return true; // no audio but game wont crash now
+    }
+#endif
+
 #if RETRO_USING_SDL1 || RETRO_USING_SDL2
     SDL_AudioSpec want;
     want.freq     = AUDIO_FREQUENCY;

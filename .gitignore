@@ -78,6 +78,7 @@ RSDKv3/*.bin
 [Dd]ependencies/ios/SDL2.framework/
 [Dd]ependencies/ios/libSDLMain.a
 ![Dd]ependencies/ios/[Ii]nfo.plist
+[Dd]ependencies/web/*
 [Dd]ependencies/all/*
 ![Dd]ependencies/all/tinyxml2
 ![Dd]ependencies/all/dependencies.txt
@@ -87,6 +88,7 @@ RSDKv3/*.bin
 ![Dd]ependencies/windows-uwp/dependencies.txt
 ![Dd]ependencies/android/README.md
 ![Dd]ependencies/android/libogg/include/ogg/config_types.h
+![Dd]ependencies/web/dependencies.txt
 
 RSDKv3UWP/Generated Files
 RSDKv3UWP/BundleArtifacts

@@ -1,0 +1,2 @@
+libtheora: https://xiph.org/downloads/ (libtheora)
+download libtheora and unzip it in "./libtheora/"

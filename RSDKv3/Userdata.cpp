@@ -318,7 +318,10 @@ void InitUserdata()
         env->DeleteLocalRef(activity);
         env->DeleteLocalRef(cls);
     }
+#elif RETRO_USE_WEB_SAVES
+    sprintf(gamePath, "/savesCD/"); // /savesCD/ is more or less guaranteed to exist (uses different folder to prevent conflict)
 #endif
+
 
     char buffer[0x200];
 #if RETRO_PLATFORM == RETRO_UWP
