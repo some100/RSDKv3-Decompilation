@@ -140,6 +140,8 @@ bool ProcessEvents()
                             stageListPosition = 0;
                             stageMode         = STAGEMODE_LOAD;
                             Engine.gameMode   = ENGINE_MAINGAME;
+                            if (Engine.highResMode)
+                                Engine.highResMode = false;
                         }
                         break;
 
@@ -158,6 +160,8 @@ bool ProcessEvents()
                             Engine.gameMode = ENGINE_MAINGAME;
                             SetGlobalVariableByName("LampPost.Check", 0);
                             SetGlobalVariableByName("Warp.XPos", 0);
+                            if (Engine.highResMode)
+                                Engine.highResMode = false;
                         }
                         break;
 
@@ -177,6 +181,8 @@ bool ProcessEvents()
                             Engine.gameMode = ENGINE_MAINGAME;
                             SetGlobalVariableByName("LampPost.Check", 0);
                             SetGlobalVariableByName("Warp.XPos", 0);
+                            if (Engine.highResMode)
+                                Engine.highResMode = false;
                         }
                         break;
 
@@ -1358,6 +1364,14 @@ void RetroEngine::Callback(int callbackID)
         case NOTIFY_STATS_CHARA_ACTION2: PrintLog("NOTIFY: StatsCharaAction2() -> %d, %d, %d", notifyParam1, notifyParam2, notifyParam3); break;
 
         // Sega Forever stuff
+        case CALLBACK_STARTGAME:
+            PrintLog("Callback: startGame()");
+
+            // Set lives count and the like
+            SetGlobalVariableByName("Config.NumOfLives", 3);
+            SetGlobalVariableByName("Config.IsPremiumUser", 1);
+            break;
+        case CALLBACK_SHOWURL: PrintLog("Callback: showURL(\"https://www.sega.com\")"); break;
         case CALLBACK_SHOWMENU_2: PrintLog("Callback: showMenu(2)"); break;
         case CALLBACK_SHOWHELPCENTER: PrintLog("Callback: Show Help Center"); break;
         case CALLBACK_CHANGEADSTYPE: PrintLog("Callback: Change Ads Type"); break;
